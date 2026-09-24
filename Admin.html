@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý</title>
+    <!-- Thư viện Quill Editor CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #eef2f5; display: flex; justify-content: center; padding: 20px 10px; margin: 0; }
+        
+        /* KHUNG CHÍNH RỘNG RÃI */
+        .main-container { background: #ffffff; padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 100%; max-width: 1100px; }
+        
+        /* THANH TAB TÁC VỤ */
+        .tab-menu { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 25px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+        .tab-btn { padding: 12px 20px; border: none; background: none; font-size: 16px; font-weight: bold; color: #7f8c8d; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; flex-shrink: 0; }
+        .tab-btn.active { color: #27ae60; border-bottom: 3px solid #27ae60; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* FORM CHUNG */
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #34495e; font-size: 15px; }
+        input[type="text"], input[type="number"], input[type="url"], input[type="date"] { width: 100%; padding: 12px; border: 1px solid #cccccc; border-radius: 6px; font-size: 15px; }
+        input:focus { border-color: #3498db; outline: none; }
+
+        .input-with-btn { position: relative; display: flex; align-items: center; }
+        .input-with-btn input { padding-right: 50px; }
+        .btn-inside-input { position: absolute; right: 5px; background: #eef2f5; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 18px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-inside-input:hover { background: #27ae60; color: white; border-color: #27ae60; }
+
+        .image-preview-box { margin-top: 10px; width: 100%; min-height: 180px; border: 2px dashed #3498db; border-radius: 6px; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 10px; }
+        .image-preview-box img { max-width: 100%; max-height: 220px; object-fit: contain; display: none; }
+        .image-preview-box span { color: #7f8c8d; font-size: 14px; font-style: italic; text-align: center; }
+
+        #editor-container { height: 180px; background-color: #fff; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; font-size: 15px; }
+        .ql-toolbar { border-top-left-radius: 6px; border-top-right-radius: 6px; background-color: #f8f9fa; }
+        
+        .btn-submit { width: 100%; padding: 14px; background-color: #27ae60; color: #ffffff; border: none; border-radius: 6px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        .btn-submit:hover { background-color: #219150; }
+        #msg { margin-top: 15px; text-align: center; font-weight: bold; padding: 12px; border-radius: 6px; font-size: 15px; }
+
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-bar input { flex: 1; }
+        .btn-search { padding: 12px 22px; background-color: #2980b9; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; flex-shrink: 0; font-size: 15px; }
+        .btn-search:hover { background-color: #3498db; }
+
+        /* BỘ LỌC TAB BÁN HÀNG */
+        .filter-container { display: flex; gap: 15px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; align-items: flex-end; flex-wrap: wrap; }
+        .filter-item { flex: 1; min-width: 200px; }
+        .filter-item label { font-size: 13px; margin-bottom: 5px; color: #475569; }
+
+        /* BẢNG DỮ LIỆU BÁN HÀNG HIỆN ĐẠI & CỐ ĐỊNH TIÊU ĐỀ */
+        .table-responsive { width: 100%; max-height: 500px; overflow-y: auto; overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+        table.sales-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 14px; background: #fff; }
+        table.sales-table th, table.sales-table td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
+        table.sales-table th { background-color: #0061ff; color: #ffffff; font-weight: 600; position: sticky; top: 0; z-index: 10; box-shadow: inset 0 -2px 0 #0f172a; }
+        table.sales-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+        table.sales-table tfoot td { font-weight: bold; background-color: #ff3333; color: #ffffff; border-top: 2px solid #94a3b8; position: sticky; bottom: 0; z-index: 5; }
+
+        /* LƯỚI SẢN PHẨM PHÓNG TO */
+        .product-card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+        @media (max-width: 480px) {
+            .product-card-list { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        }
+
+        .product-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); border-color: #27ae60; }
+        
+        .card-img-wrapper { width: 100%; height: 160px; background: #f8fafc; border-radius: 6px; border: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 8px; }
+        .card-img-wrapper img { width: 100%; height: 100%; object-fit: contain; }
+
+        .product-card .code { font-size: 12px; background: #eef2f5; padding: 2px 8px; border-radius: 4px; color: #555; display: inline-block; margin-bottom: 3px; font-weight: 600; }
+        .product-card .title { font-weight: bold; color: #2c3e50; font-size: 15px; margin: 2px 0 4px 0; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .product-card .price { color: #e74c3c; font-weight: bold; font-size: 16px; margin: 2px 0; }
+        .product-card .score { color: #f39c12; font-size: 13px; margin-top: 2px; }
+        
+        .btn-view-detail { margin-top: 10px; padding: 8px; background-color: #f8f9fa; border: 1px solid #dcdde1; border-radius: 5px; font-size: 13px; font-weight: 600; color: #2c3e50; transition: 0.2s; }
+        .product-card:hover .btn-view-detail { background-color: #27ae60; color: #fff; border-color: #27ae60; }
+
+        .btn-submit-emp { width: 100%; padding: 14px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 17px; margin-top: 20px; }
+        .btn-submit-emp:hover { background-color: #218838; }
+        
+        #empStatus { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; font-weight: bold; text-align: center; font-size: 15px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+
+        /* POPUP MODAL PHÓNG TO ẢNH */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; z-index: 9999; padding: 15px; }
+        .modal-card { background: #fff; border-radius: 12px; max-width: 750px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 8px 30px rgba(0,0,0,0.25); animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .modal-close { position: absolute; top: 12px; right: 15px; font-size: 28px; font-weight: bold; color: #7f8c8d; cursor: pointer; border: none; background: none; }
+        .modal-close:hover { color: #e74c3c; }
+        
+        .modal-header { display: flex; gap: 25px; border-bottom: 1px solid #eee; padding-bottom: 18px; margin-bottom: 18px; align-items: center; }
+        
+        .modal-img-box { width: 280px; height: 280px; border: 1px solid #e0e0e0; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #fafafa; padding: 8px; }
+        .modal-img-box img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .modal-info { flex: 1; }
+        .modal-info h3 { margin: 0 0 10px 0; color: #2c3e50; font-size: 20px; line-height: 1.3; }
+        .modal-info p { margin: 8px 0; font-size: 15px; color: #444; }
+        .modal-body-title { font-weight: bold; color: #2c3e50; margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid #27ae60; display: inline-block; padding-bottom: 3px; }
+        
+        .modal-details-content { font-size: 15px; color: #333; line-height: 1.4; word-break: break-word; background: #fdfdfd; padding: 15px; border: 1px solid #f0f0f0; border-radius: 6px; }
+        .modal-details-content p, 
+        .modal-details-content div, 
+        .modal-details-content ul, 
+        .modal-details-content ol { margin-top: 3px; margin-bottom: 5px; }
+        .modal-details-content ul, 
+        .modal-details-content ol { padding-left: 20px; }
+
+        @media (max-width: 650px) {
+            .modal-header { flex-direction: column; text-align: center; }
+            .modal-img-box { width: 100%; height: 260px; }
+            .modal-info h3 { font-size: 18px; }
+        }
+		
+/* Căn giữa tất cả các tiêu đề (th) trên thanh tiêu đề của bảng */
+table.sales-table th {
+    text-align: center !important;
+}
+
+/* Tự động co giãn vừa khít nội dung cho 4 cột tổng/số liệu cuối cùng bên phải */
+table.sales-table th:nth-last-child(-n+4),
+table.sales-table td:nth-last-child(-n+4) {
+    width: 1%;
+    white-space: nowrap;
+}
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- THANH MENU TAB -->
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchTab('tabAddProduct', this)">Thêm Sản Phẩm</button>
+        <button class="tab-btn" onclick="switchTab('tabViewProduct', this)">Xem Sản Phẩm</button>
+        <button class="tab-btn" onclick="switchTab('tabEmployee', this)">Đăng Ký Nhân Viên</button>
+        <button class="tab-btn" onclick="switchTab('tabSales', this)">Bán Hàng</button>
+    </div>
+
+    <!-- TAB 1: THÊM SẢN PHẨM -->
+    <div id="tabAddProduct" class="tab-content active">
+        <form id="productForm">
+            <div class="form-group">
+                <label for="maSP">Mã SP</label>
+                <input type="text" id="maSP" required placeholder="Nhập Mã SP (Ví dụ: 0001)">
+            </div>
+            <div class="form-group">
+                <label for="tenSP">Tên SP</label>
+                <input type="text" id="tenSP" required placeholder="Nhập Tên sản phẩm">
+            </div>
+            <div class="form-group">
+                <label for="giaSP">Giá SP (đ)</label>
+                <input type="text" id="giaSP" required placeholder="Nhập Giá sản phẩm (Ví dụ: 1000000)">
+            </div>
+            <div class="form-group">
+                <label for="diem">Điểm</label>
+                <input type="number" id="diem" required placeholder="Nhập Điểm tích lũy / đánh giá">
+            </div>
+            <div class="form-group">
+                <label for="anh">Link Ảnh Sản Phẩm (URL)</label>
+                <input type="url" id="anh" required placeholder="https://link-anh.com/hinh-anh.jpg">
+                <div class="image-preview-box">
+                    <span id="previewText">Khung xem trước ảnh sẽ hiển thị tại đây</span>
+                    <img id="imgPreview" src="" alt="Xem trước ảnh">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Thông tin chi tiết</label>
+                <div id="editor-container"></div>
+            </div>
+            <button type="submit" id="btnSave" class="btn-submit">Lưu Sản Phẩm</button>
+        </form>
+        <div id="msg"></div>
+    </div>
+
+    <!-- TAB 2: XEM SẢN PHẨM -->
+    <div id="tabViewProduct" class="tab-content">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Nhập Mã SP hoặc Tên SP để tìm kiếm...">
+            <button class="btn-search" onclick="loadProducts()">Xem Sản Phẩm</button>
+        </div>
+        <div id="viewStatus" style="text-align: center; font-weight: bold; margin-bottom: 12px; font-size: 14px;"></div>
+        <div class="product-card-list" id="productList"></div>
+    </div>
+
+    <!-- TAB 3: ĐĂNG KÝ NHÂN VIÊN -->
+    <div id="tabEmployee" class="tab-content">
+        <div class="form-group">
+            <label for="maNV">Mã Nhân Viên:</label>
+            <div class="input-with-btn">
+                <input type="text" id="maNV" placeholder="Tự nhập hoặc bấm 🔁 để tạo tự động">
+                <button type="button" class="btn-inside-input" onclick="generateCode()" title="Tạo mã tự động">🔁</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="tenNV">Tên Nhân Viên:</label>
+            <input type="text" id="tenNV" placeholder="Nhập họ và tên">
+        </div>
+        
+        <div class="form-group">
+            <label for="ngaySinh">Ngày Sinh (dd/mm/yyyy):</label>
+            <input type="text" id="ngaySinh" placeholder="dd/mm/yyyy" maxlength="10">
+        </div>
+        
+        <div class="form-group">
+            <label for="cccd">Số CCCD:</label>
+            <input type="text" id="cccd" placeholder="Nhập số CCCD">
+        </div>
+
+        <div class="form-group">
+            <label for="sdt">Số Điện Thoại:</label>
+            <input type="text" id="sdt" placeholder="Nhập số điện thoại">
+        </div>
+
+        <button type="button" class="btn-submit-emp" onclick="submitEmployeeForm(false)">Lưu Thông Tin Nhân Viên</button>
+
+        <div id="empStatus"></div>
+    </div>
+
+    <!-- TAB 4: BÁN HÀNG (BAN_HANG) -->
+    <div id="tabSales" class="tab-content">
+        <div class="filter-container" style="display: flex; gap: 15px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; align-items: flex-end; flex-wrap: wrap;">
+            <div class="filter-item">
+                <label for="filterDate">Lọc theo Ngày (dd/mm/yyyy):</label>
+                <!-- Dùng type="date" để chọn lịch, nhưng ta sẽ tự chuyển đổi sang dd/mm/yyyy để so sánh -->
+                <input type="date" id="filterDate">
+            </div>
+            <div class="filter-item">
+                <label for="filterEmpCode">Lọc theo Mã Nhân Viên:</label>
+                <input type="text" id="filterEmpCode" placeholder="Nhập mã nhân viên...">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-search" onclick="fetchAndCacheSalesData()" style="background-color: #27ae60; margin: 0;">Cập Nhật Dữ Liệu</button>
+                <button class="btn-search" onclick="applyClientFilter()" style="margin: 0;">Lọc Dữ Liệu</button>
+            </div>
+        </div>
+
+        <div id="salesStatus" style="text-align: center; font-weight: bold; margin-bottom: 12px; font-size: 14px;"></div>
+        
+       <div class="table-responsive">
+            <table class="sales-table">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Mã NV</th>
+                        <th>Mã SP</th>
+                        <th>Tên SP</th>
+                        <th>Đơn Giá</th>
+                        <th>Số Lượng</th>
+                        <th>Thành Tiền</th>
+                        <th>Tiền Mặt</th>
+                        <th>Chuyển Khoản</th>
+                        <th>Điểm Thưởng</th>
+                    </tr>
+                </thead>
+                <tbody id="salesTableBody">
+                    <tr>
+                        <td colspan="10" style="text-align: center; color: #7f8c8d;">Chưa có dữ liệu. Vui lòng bấm "Cập Nhật Dữ Liệu" để bắt đầu.</td>
+                    </tr>
+                </tbody>
+                <tfoot id="salesTableFoot" style="display: none;">
+    <tr>
+        <!-- Đã đổi text-align: right thành text-align: center để canh giữa chữ TỔNG CỘNG -->
+        <td colspan="6" style="text-align: center; font-weight: bold;">TỔNG CỘNG:</td>
+        <td id="sumThanhTien" style="text-align: right;">0</td>
+        <td id="sumTienMat" style="text-align: right;">0</td>
+        <td id="sumChuyenKhoan" style="text-align: right;">0</td>
+        <td id="sumDiemThuong" style="text-align: right;">0</td>
+    </tr>
+</tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- POPUP XEM CHI TIẾT SẢN PHẨM -->
+<div class="modal-overlay" id="productModal" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModalDirect()">&times;</button>
+        <div class="modal-header">
+            <div class="modal-img-box">
+                <img id="modalImg" src="" alt="Ảnh sản phẩm">
+            </div>
+            <div class="modal-info">
+                <span class="code" id="modalCode" style="font-size:12px; background:#eef2f5; padding:3px 8px; border-radius:4px;"></span>
+                <h3 id="modalTitle"></h3>
+                <p><strong>Giá bán:</strong> <span id="modalPrice" style="color:#e74c3c; font-weight:bold; font-size:18px;"></span></p>
+                <p> <span id="modalScore" style="color:#f39c12; font-size:16px;"></span></p>
+            </div>
+        </div>
+        <div class="modal-body-title">Mô Tả Chi Tiết</div>
+        <div class="modal-details-content" id="modalDetails"></div>
+    </div>
+</div>
+
+<!-- Thư viện Quill Editor JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbw1Afv0CoAMoK-JVjj5H6XJ-40eoA4jgOOneAIHCdHD90Wx_1eTp9hHjqwbTfaqL35i/exec';
+    const fallbackSVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'><rect width='100%' height='100%' fill='%23f8fafc'/><path d='M60 55 L90 55 L90 95 L60 95 Z' fill='none' stroke='%23cbd5e1' stroke-width='2'/><circle cx='68' cy='65' r='4' fill='%23cbd5e1'/><path d='M60 85 L72 73 L80 81 L85 76 L90 85 Z' fill='%23cbd5e1'/><text x='50%' y='80%' font-family='sans-serif' font-size='11' fill='%2394a3b8' text-anchor='middle'>Anh loi / Khong co anh</text></svg>";
+
+    let cachedProducts = [];
+
+function switchTab(tabId, element) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+        document.getElementById(tabId).classList.add('active');
+        element.classList.add('active');
+
+        // ĐÃ XÓA BỎ HOÀN TOÀN ĐOẠN GỌI HÀM TẢI NGẦM TỰ ĐỘNG Ở ĐÂY
+    }
+
+    const ngaySinhInput = document.getElementById('ngaySinh');
+    ngaySinhInput.addEventListener('input', function(e) {
+        let value = this.value.replace(/\D/g, ''); 
+        if (value.length > 8) value = value.substring(0, 8); 
+
+        let formatted = '';
+        if (value.length > 0) formatted = value.substring(0, 2);
+        if (value.length > 2) formatted += '/' + value.substring(2, 4);
+        if (value.length > 4) formatted += '/' + value.substring(4, 8);
+        this.value = formatted;
+    });
+
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['clean']
+            ]
+        },
+        placeholder: 'Nhập thông tin chi tiết sản phẩm...'
+    });
+
+    const inputGiaSP = document.getElementById('giaSP');
+    const inputAnh = document.getElementById('anh');
+    const imgPreview = document.getElementById('imgPreview');
+    const previewText = document.getElementById('previewText');
+
+    inputGiaSP.addEventListener('input', function() {
+        let value = this.value.replace(/\D/g, '');
+        this.value = value ? Number(value).toLocaleString('vi-VN') : '';
+    });
+
+    function updateImagePreview() {
+        const url = inputAnh.value.trim();
+        if (url !== "") {
+            imgPreview.src = url;
+            imgPreview.style.display = 'block';
+            previewText.style.display = 'none';
+        } else {
+            imgPreview.src = "";
+            imgPreview.style.display = 'none';
+            previewText.innerText = "Khung xem trước ảnh sẽ hiển thị tại đây";
+            previewText.style.color = "#7f8c8d";
+            previewText.style.display = 'block';
+        }
+    }
+
+    inputAnh.addEventListener('input', updateImagePreview);
+    inputAnh.addEventListener('change', updateImagePreview);
+    inputAnh.addEventListener('paste', () => setTimeout(updateImagePreview, 100));
+
+    imgPreview.addEventListener('error', function() {
+        imgPreview.style.display = 'none';
+        previewText.innerText = "❌ Link ảnh bị lỗi hoặc không hỗ trợ hiển thị!";
+        previewText.style.color = "#d63031";
+        previewText.style.display = 'block';
+    });
+
+    function sendProductData(allowOverwrite = false, allowDuplicateName = false) {
+        const btnSave = document.getElementById('btnSave');
+        const msg = document.getElementById('msg');
+        btnSave.disabled = true;
+        btnSave.innerText = 'Đang xử lý...';
+        msg.style.backgroundColor = '#e3f2fd';
+        msg.style.color = '#0d47a1';
+        msg.innerText = 'Đang gửi dữ liệu ...';
+
+        const rawGiaSP = inputGiaSP.value.replace(/\./g, '');
+        let inputMaSP = document.getElementById('maSP').value.trim();
+
+        const payload = {
+            action: 'add',
+            maSP: inputMaSP,
+            tenSP: document.getElementById('tenSP').value,
+            giaSP: rawGiaSP,
+            diem: document.getElementById('diem').value,
+            anh: inputAnh.value,
+            thongTin: quill.root.innerHTML,
+            allowOverwrite: allowOverwrite,
+            allowDuplicateName: allowDuplicateName
+        };
+
+        fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.result === 'duplicate_code') {
+                btnSave.disabled = false;
+                btnSave.innerText = 'Lưu Sản Phẩm';
+                if (confirm(res.message + "\n\nBạn có muốn THAY THẾ (ghi đè) thông tin sản phẩm này không?")) {
+                    sendProductData(true, allowDuplicateName);
+                } else {
+                    msg.innerText = '❌ Đã hủy thao tác lưu do trùng Mã SP.';
+                }
+            } else if (res.result === 'duplicate_name') {
+                btnSave.disabled = false;
+                btnSave.innerText = 'Lưu Sản Phẩm';
+                if (confirm(res.message + "\n\nBạn có chắc chắn vẫn muốn THÊM sản phẩm trùng tên này không?")) {
+                    sendProductData(allowOverwrite, true);
+                } else {
+                    msg.innerText = '❌ Đã hủy thao tác do trùng Tên SP.';
+                }
+            } else if (res.result === 'success') {
+                msg.style.backgroundColor = '#d4edda';
+                msg.style.color = '#155724';
+                msg.innerText = '✅ ' + res.message;
+                document.getElementById('productForm').reset();
+                quill.setContents([]);
+                updateImagePreview();
+            } else {
+                msg.style.backgroundColor = '#f8d7da';
+                msg.style.color = '#721c24';
+                msg.innerText = '❌ Lỗi: ' + res.message;
+            }
+        })
+        .catch(err => {
+            msg.style.backgroundColor = '#f8d7da';
+            msg.style.color = '#721c24';
+            msg.innerText = '❌ Có lỗi kết nối!';
+        })
+        .finally(() => {
+            btnSave.disabled = false;
+            btnSave.innerText = 'Lưu Sản Phẩm';
+        });
+    }
+
+    document.getElementById('productForm').addEventListener('submit', e => {
+        e.preventDefault();
+        sendProductData(false, false);
+    });
+
+    function loadProducts() {
+        const query = document.getElementById('searchInput').value.trim();
+        const productList = document.getElementById('productList');
+        const viewStatus = document.getElementById('viewStatus');
+
+        productList.innerHTML = '';
+        viewStatus.style.color = '#2980b9';
+        viewStatus.innerText = 'Đang tải dữ liệu ...';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'get', query: query })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.result === 'success') {
+                cachedProducts = res.data;
+                if (cachedProducts.length === 0) {
+                    viewStatus.style.color = '#c0392b';
+                    viewStatus.innerText = 'Không tìm thấy sản phẩm nào phù hợp!';
+                    return;
+                }
+
+                viewStatus.style.color = '#27ae60';
+                viewStatus.innerText = `Tìm thấy ${cachedProducts.length} sản phẩm:`;
+
+                cachedProducts.forEach((item, index) => {
+                    const formattedPrice = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.onclick = () => openModal(index);
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="card-img-wrapper">
+                                <img src="${item.anh}" alt="${item.tenSP}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+                            </div>
+                            <div><span class="code">Mã: ${item.maSP}</span></div>
+                            <div class="title" title="${item.tenSP}">${item.tenSP}</div>
+                            <div class="price">${formattedPrice}</div>
+                            <div class="score">⭐ Điểm: ${item.diem}</div>
+                        </div>
+                        <button class="btn-view-detail">Xem Chi Tiết</button>
+                    `;
+                    productList.appendChild(card);
+                });
+            } else {
+                viewStatus.style.color = '#c0392b';
+                viewStatus.innerText = 'Lỗi: ' + res.message;
+            }
+        })
+        .catch(err => {
+            viewStatus.style.color = '#c0392b';
+            viewStatus.innerText = 'Lỗi kết nối khi tải dữ liệu!';
+        });
+    }
+
+    /* HÀM TẢI VÀ TÍNH TỔNG DỮ LIỆU BÁN HÀNG (TAB 4) */
+    function loadSalesData() {
+        const filterDate = document.getElementById('filterDate').value;
+        const filterEmpCode = document.getElementById('filterEmpCode').value.trim();
+        const salesTableBody = document.getElementById('salesTableBody');
+        const salesTableFoot = document.getElementById('salesTableFoot');
+        const salesStatus = document.getElementById('salesStatus');
+
+        salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #2980b9;">Đang tải dữ liệu bán hàng...</td></tr>';
+        salesTableFoot.style.display = 'none';
+        salesStatus.innerText = '';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ 
+                action: 'getSales', 
+                date: filterDate, 
+                empCode: filterEmpCode 
+            })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.result === 'success') {
+                const data = res.data || [];
+                salesTableBody.innerHTML = '';
+
+                if (data.length === 0) {
+                    salesStatus.style.color = '#c0392b';
+                    salesStatus.innerText = 'Không tìm thấy dữ liệu bán hàng phù hợp!';
+                    salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #7f8c8d;">Không có dữ liệu.</td></tr>';
+                    return;
+                }
+
+                salesStatus.style.color = '#27ae60';
+                salesStatus.innerText = `Tìm thấy ${data.length} giao dịch.`;
+
+                let sumThanhTien = 0;
+                let sumTienMat = 0;
+                let sumChuyenKhoan = 0;
+                let sumDiemThuong = 0;
+
+                data.forEach(item => {
+                    const thanhTien = Number(item.thanhTien) || 0;
+                    const tienMat = Number(item.tienMat) || 0;
+                    const chuyenKhoan = Number(item.chuyenKhoan) || 0;
+                    const diemThuong = Number(item.diemThuong) || 0;
+
+                    sumThanhTien += thanhTien;
+                    sumTienMat += tienMat;
+                    sumChuyenKhoan += chuyenKhoan;
+                    sumDiemThuong += diemThuong;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.ngay || ''}</td>
+                        <td>${item.maNV || ''}</td>
+                        <td>${item.tenNV || ''}</td>
+                        <td>${item.maKH || ''}</td>
+                        <td>${item.tenKH || ''}</td>
+                        <td>${thanhTien.toLocaleString('vi-VN')} đ</td>
+                        <td>${tienMat.toLocaleString('vi-VN')} đ</td>
+                        <td>${chuyenKhoan.toLocaleString('vi-VN')} đ</td>
+                        <td>${diemThuong.toLocaleString('vi-VN')}</td>
+                    `;
+                    salesTableBody.appendChild(tr);
+                });
+
+                // Cập nhật tổng cộng vào chân bảng
+                document.getElementById('sumThanhTien').innerText = sumThanhTien.toLocaleString('vi-VN') + ' đ';
+                document.getElementById('sumTienMat').innerText = sumTienMat.toLocaleString('vi-VN') + ' đ';
+                document.getElementById('sumChuyenKhoan').innerText = sumChuyenKhoan.toLocaleString('vi-VN') + ' đ';
+                document.getElementById('sumDiemThuong').innerText = sumDiemThuong.toLocaleString('vi-VN');
+                salesTableFoot.style.display = 'table-row-group';
+
+            } else {
+                salesStatus.style.color = '#c0392b';
+                salesStatus.innerText = 'Lỗi: ' + (res.message || 'Không thể lấy dữ liệu từ server');
+                salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #c0392b;">Lỗi khi tải dữ liệu.</td></tr>';
+            }
+        })
+        .catch(err => {
+            salesStatus.style.color = '#c0392b';
+            salesStatus.innerText = 'Lỗi kết nối khi tải dữ liệu bán hàng!';
+            salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #c0392b;">Lỗi kết nối.</td></tr>';
+        });
+    }
+
+    function openModal(index) {
+        const item = cachedProducts[index];
+        if (!item) return;
+
+        document.getElementById('modalCode').innerText = 'Mã SP: ' + item.maSP;
+        document.getElementById('modalTitle').innerText = item.tenSP;
+        document.getElementById('modalPrice').innerText = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
+        document.getElementById('modalScore').innerText = '⭐ ' + item.diem;
+        document.getElementById('modalDetails').innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+        
+        const modalImg = document.getElementById('modalImg');
+        modalImg.src = item.anh;
+        modalImg.onerror = function() {
+            this.onerror = null;
+            this.src = fallbackSVG;
+        };
+
+        document.getElementById('productModal').style.display = 'flex';
+    }
+
+    function closeModal(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            document.getElementById('productModal').style.display = 'none';
+        }
+    }
+
+    function closeModalDirect() {
+        document.getElementById('productModal').style.display = 'none';
+    }
+
+    async function sendEmpData(payload) {
+        const response = await fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        return await response.json();
+    }
+
+    function showEmpStatus(text, type) {
+        const statusDiv = document.getElementById('empStatus');
+        statusDiv.className = type;
+        statusDiv.innerText = text;
+        statusDiv.style.display = 'block';
+    }
+
+    async function generateCode() {
+        showEmpStatus('Đang tạo mã...', 'warning');
+        try {
+            const data = await sendEmpData({ action: 'generateEmployeeCode' });
+            if (data.result === 'success') {
+                document.getElementById('maNV').value = data.generatedCode;
+                showEmpStatus('Đã tạo mã: ' + data.generatedCode, 'success');
+            } else {
+                showEmpStatus('Lỗi: ' + data.message, 'error');
+            }
+        } catch (err) {
+            showEmpStatus('Không thể kết nối đến server: ' + err.message, 'error');
+        }
+    }
+
+    async function submitEmployeeForm(allowOverwrite = false) {
+        let inputMaNV = document.getElementById('maNV').value.trim();
+
+        const payload = {
+            action: 'addEmployee',
+            maNV: inputMaNV,
+            tenNV: document.getElementById('tenNV').value,
+            ngaySinh: document.getElementById('ngaySinh').value,
+            cccd: document.getElementById('cccd').value,
+            sdt: document.getElementById('sdt').value,
+            allowOverwrite: allowOverwrite
+        };
+
+        if (!payload.tenNV || !payload.cccd) {
+            alert('Vui lòng nhập đầy đủ Tên và CCCD!');
+            return;
+        }
+
+        showEmpStatus('Đang gửi dữ liệu...', 'warning');
+
+        try {
+            const data = await sendEmpData(payload);
+
+            if (data.result === 'success') {
+                showEmpStatus(data.message, 'success');
+                if (!allowOverwrite) {
+                    document.getElementById('maNV').value = '';
+                    document.getElementById('tenNV').value = '';
+                    document.getElementById('ngaySinh').value = '';
+                    document.getElementById('cccd').value = '';
+                    document.getElementById('sdt').value = '';
+                }
+            } else if (data.result === 'duplicate_code' || data.result === 'duplicate_cccd') {
+                if (confirm(data.message)) {
+                    submitEmployeeForm(true);
+                } else {
+                    showEmpStatus('Đã hủy thao tác ghi đè.', 'error');
+                }
+            } else {
+                showEmpStatus('Lỗi: ' + data.message, 'error');
+            }
+        } catch (err) {
+            showEmpStatus('Lỗi gửi dữ liệu: ' + err.message, 'error');
+        }
+    }
+	
+	let cachedSalesData = []; // Biến lưu toàn bộ dữ liệu tải về máy
+
+    // Hàm hỗ trợ chuẩn hóa mọi định dạng ngày sang dd/mm/yyyy
+    function normalizeDate(dateStr) {
+        if (!dateStr) return "";
+        dateStr = dateStr.toString().trim();
+
+        // Thử parse bằng đối tượng Date của Javascript (xử lý kiểu "Thu Sep 24 2026...")
+        let d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+            let day = String(d.getDate()).padStart(2, '0');
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        // Xử lý nếu chuỗi có dạng "24/09/2026 21:06:16" hoặc tương tự
+        let parts = dateStr.split(/[\/\s:]/);
+        if (parts.length >= 3 && parts[2].length === 4) {
+            return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+        }
+
+        return dateStr; // Trả về nguyên bản nếu không khớp dạng nào
+    }
+
+    // 1. Hàm gọi API tải toàn bộ dữ liệu về lưu vào biến tạm (Cache) và tự động chuẩn hóa ngày
+    function fetchAndCacheSalesData() {
+        const salesTableBody = document.getElementById('salesTableBody');
+        const salesTableFoot = document.getElementById('salesTableFoot');
+        const salesStatus = document.getElementById('salesStatus');
+
+        salesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #2980b9;">Đang tải và chuẩn hóa dữ liệu về máy...</td></tr>';
+        salesTableFoot.style.display = 'none';
+        salesStatus.innerText = '';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getSales' })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.result === 'success') {
+                // Xử lý chuẩn hóa cột ngày ngay khi nhận dữ liệu về máy
+                cachedSalesData = (res.data || []).map(item => {
+                    return {
+                        ...item,
+                        ngay: normalizeDate(item.ngay)
+                    };
+                });
+
+                salesStatus.style.color = '#27ae60';
+                salesStatus.style.fontWeight = 'bold';
+                salesStatus.innerText = `Đã tải và chuẩn hóa thành công ${cachedSalesData.length} bản ghi về máy.`;
+                
+                renderSalesTable(cachedSalesData);
+            } else {
+                salesStatus.style.color = '#c0392b';
+                salesStatus.innerText = 'Lỗi: ' + (res.message || 'Không thể lấy dữ liệu');
+                salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #c0392b;">Không thể tải dữ liệu.</td></tr>';
+            }
+        })
+        .catch(err => {
+            salesStatus.style.color = '#c0392b';
+            salesStatus.innerText = 'Lỗi kết nối khi tải dữ liệu!';
+            salesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #c0392b;">Lỗi kết nối.</td></tr>';
+        });
+    }
+
+    // 2. Hàm lọc dữ liệu ngay trên mảng cachedSalesData ở máy người dùng
+    function applyClientFilter() {
+        if (cachedSalesData.length === 0) {
+            alert('Chưa có dữ liệu trong bộ nhớ máy. Vui lòng bấm "Cập Nhật Dữ Liệu" trước!');
+            return;
+        }
+
+        const filterDateVal = document.getElementById('filterDate').value; // Định dạng từ input date: YYYY-MM-DD
+        const filterEmpCode = document.getElementById('filterEmpCode').value.trim().toUpperCase();
+        
+        let filtered = cachedSalesData.filter(item => {
+            let matchDate = true;
+            let matchEmp = true;
+
+            // Chuyển YYYY-MM-DD từ ô input thành DD/MM/YYYY để so khớp với dữ liệu đã được chuẩn hóa
+            if (filterDateVal) {
+                const parts = filterDateVal.split('-'); // [YYYY, MM, DD]
+                const formattedInputDate = `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+                
+                if (item.ngay !== formattedInputDate) {
+                    matchDate = false;
+                }
+            }
+
+            // Xử lý lọc theo mã nhân viên
+            if (filterEmpCode) {
+                if (!item.maNV.includes(filterEmpCode)) {
+                    matchEmp = false;
+                }
+            }
+
+            return matchDate && matchEmp;
+        });
+
+        renderSalesTable(filtered);
+        
+        const salesStatus = document.getElementById('salesStatus');
+        salesStatus.style.color = '#2980b9';
+        salesStatus.innerText = `Lọc thành công: Hiển thị ${filtered.length} / ${cachedSalesData.length} bản ghi.`;
+    }
+
+    // 3. Hàm render bảng kết quả & tính tổng (Đã chỉnh canh phải 6 cột cuối)
+    function renderSalesTable(dataList) {
+        const salesTableBody = document.getElementById('salesTableBody');
+        const salesTableFoot = document.getElementById('salesTableFoot');
+        
+        salesTableBody.innerHTML = '';
+
+        if (dataList.length === 0) {
+            salesTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #7f8c8d;">Không tìm thấy dữ liệu phù hợp với điều kiện lọc.</td></tr>';
+            salesTableFoot.style.display = 'none';
+            return;
+        }
+
+        let sumThanhTien = 0;
+        let sumTienMat = 0;
+        let sumChuyenKhoan = 0;
+        let sumDiemThuong = 0;
+
+        dataList.forEach(item => {
+            const donGia = Number(item.DonGia) || 0;
+            const soLuong = Number(item.SoLuong) || 0;
+            const thanhTien = Number(item.thanhTien) || 0;
+            const tienMat = Number(item.tienMat) || 0;
+            const chuyenKhoan = Number(item.chuyenKhoan) || 0;
+            const diemThuong = Number(item.diemThuong) || 0;
+
+            sumThanhTien += thanhTien;
+            sumTienMat += tienMat;
+            sumChuyenKhoan += chuyenKhoan;
+            sumDiemThuong += diemThuong;
+
+            const tr = document.createElement('tr');
+            // Đã đổi thành style="text-align: right !important;" cho 6 cột cuối
+            tr.innerHTML = `
+                <td>${item.ngay || ''}</td>
+                <td>${item.maNV || ''}</td>
+                <td>${item.MaSP || ''}</td>
+                <td>${item.TenSP || ''}</td>
+                <td style="text-align: right !important;">${donGia.toLocaleString('vi-VN')} đ</td>
+                <td style="text-align: right !important;">${soLuong.toLocaleString('vi-VN')}</td>
+                <td style="text-align: right !important;">${thanhTien.toLocaleString('vi-VN')} đ</td>
+                <td style="text-align: right !important;">${tienMat.toLocaleString('vi-VN')} đ</td>
+                <td style="text-align: right !important;">${chuyenKhoan.toLocaleString('vi-VN')} đ</td>
+                <td style="text-align: right !important;">${diemThuong.toLocaleString('vi-VN')}</td>
+            `;
+            salesTableBody.appendChild(tr);
+        });
+
+        document.getElementById('sumThanhTien').innerText = sumThanhTien.toLocaleString('vi-VN') + ' đ';
+        document.getElementById('sumTienMat').innerText = sumTienMat.toLocaleString('vi-VN') + ' đ';
+        document.getElementById('sumChuyenKhoan').innerText = sumChuyenKhoan.toLocaleString('vi-VN') + ' đ';
+        document.getElementById('sumDiemThuong').innerText = sumDiemThuong.toLocaleString('vi-VN');
+        salesTableFoot.style.display = 'table-row-group';
+    }
+// TÍNH NĂNG KÉO GIÃN KÍCH THƯỚC CÁC CỘT BẢNG
+        document.addEventListener('DOMContentLoaded', function () {
+            const table = document.querySelector('.sales-table');
+            if (!table) return;
+            const cols = table.querySelectorAll('th');
+            cols.forEach(function (col) {
+                const resizer = document.createElement('div');
+                resizer.style.width = '5px';
+                resizer.style.height = '100%';
+                resizer.style.position = 'absolute';
+                resizer.style.right = '0';
+                resizer.style.top = '0';
+                resizer.style.cursor = 'col-resize';
+                resizer.style.userSelect = 'none';
+                col.style.position = 'relative';
+                col.appendChild(resizer);
+
+                let x = 0, w = 0;
+                resizer.addEventListener('mousedown', function (e) {
+                    x = e.clientX;
+                    w = col.offsetWidth;
+                    document.addEventListener('mousemove', mouseMoveHandler);
+                    document.addEventListener('mouseup', mouseUpHandler);
+                });
+
+                function mouseMoveHandler(e) {
+                    const dx = e.clientX - x;
+                    col.style.width = `${w + dx}px`;
+                }
+
+                function mouseUpHandler() {
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
