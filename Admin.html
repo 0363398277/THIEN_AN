@@ -13,6 +13,17 @@
         /* KHUNG CHÍNH RỘNG RÃI */
         .main-container { background: #ffffff; padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 100%; max-width: 1100px; }
         
+		body { background-color: #eef2f5; display: flex; justify-content: center; padding: 20px 10px; margin: 0; min-height: 100vh; align-items: center; }
+
+/* KHUNG ĐĂNG NHẬP */
+#loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 99999; }
+.login-card { background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); width: 100%; max-width: 400px; text-align: center; }
+.login-card h2 { margin-bottom: 20px; color: #2c3e50; }
+.login-card input { width: 100%; padding: 12px; border: 1px solid #cccccc; border-radius: 6px; font-size: 16px; margin-bottom: 15px; text-align: center; }
+.login-card button { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+.login-card button:hover { background-color: #219150; }
+#loginMsg { margin-top: 10px; font-size: 14px; font-weight: bold; }
+		
         /* THANH TAB TÁC VỤ */
         .tab-menu { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 25px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
         .tab-btn { padding: 12px 20px; border: none; background: none; font-size: 16px; font-weight: bold; color: #7f8c8d; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; flex-shrink: 0; }
@@ -134,7 +145,21 @@ table.sales-table td:nth-last-child(-n+4) {
 </head>
 <body>
 
-<div class="main-container">
+
+<!-- KHUNG ĐĂNG NHẬP BAN ĐẦU -->
+<div id="loginOverlay">
+    <div class="login-card">
+        <h2>Đăng Nhập Hệ Thống</h2>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <input type="password" id="loginPassword" required placeholder="Nhập mật khẩu truy cập...">
+            <button type="submit" id="btnLogin">Xác Nhận</button>
+        </form>
+        <div id="loginMsg"></div>
+    </div>
+</div>
+
+<!-- THÊM id="mainContainer" và style="display: none;" ĐỂ ẨN KHI CHƯA ĐĂNG NHẬP -->
+<div class="main-container" id="mainContainer" style="display: none;">
     <!-- THANH MENU TAB -->
     <div class="tab-menu">
         <button class="tab-btn active" onclick="switchTab('tabAddProduct', this)">Thêm Sản Phẩm</button>
@@ -158,6 +183,12 @@ table.sales-table td:nth-last-child(-n+4) {
                 <label for="giaSP">Giá SP (đ)</label>
                 <input type="text" id="giaSP" required placeholder="Nhập Giá sản phẩm (Ví dụ: 1000000)">
             </div>
+			
+			<div class="form-group">
+				<label for="soLuong">Số Lượng</label>
+				<input type="number" id="soLuong" required placeholder="Nhập số lượng sản phẩm kho">
+			</div>
+
             <div class="form-group">
                 <label for="diem">Điểm</label>
                 <input type="number" id="diem" required placeholder="Nhập Điểm tích lũy / đánh giá">
@@ -229,16 +260,21 @@ table.sales-table td:nth-last-child(-n+4) {
         <div class="filter-container" style="display: flex; gap: 15px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; align-items: flex-end; flex-wrap: wrap;">
             <div class="filter-item">
                 <label for="filterDate">Lọc theo Ngày (dd/mm/yyyy):</label>
-                <!-- Dùng type="date" để chọn lịch, nhưng ta sẽ tự chuyển đổi sang dd/mm/yyyy để so sánh -->
                 <input type="date" id="filterDate">
             </div>
             <div class="filter-item">
                 <label for="filterEmpCode">Lọc theo Mã Nhân Viên:</label>
                 <input type="text" id="filterEmpCode" placeholder="Nhập mã nhân viên...">
             </div>
+            <!-- BỔ SUNG Ô LỌC MÃ SẢN PHẨM -->
+            <div class="filter-item">
+                <label for="filterProductCode">Lọc theo Mã Sản Phẩm:</label>
+                <input type="text" id="filterProductCode" placeholder="Nhập mã sản phẩm...">
+            </div>
             <div style="display: flex; gap: 10px;">
+				<button class="btn-search" onclick="applyClientFilter()" style="margin: 0;">Lọc Dữ Liệu</button>
                 <button class="btn-search" onclick="fetchAndCacheSalesData()" style="background-color: #27ae60; margin: 0;">Cập Nhật Dữ Liệu</button>
-                <button class="btn-search" onclick="applyClientFilter()" style="margin: 0;">Lọc Dữ Liệu</button>
+                
             </div>
         </div>
 
@@ -266,19 +302,17 @@ table.sales-table td:nth-last-child(-n+4) {
                     </tr>
                 </tbody>
                 <tfoot id="salesTableFoot" style="display: none;">
-    <tr>
-        <!-- Đã đổi text-align: right thành text-align: center để canh giữa chữ TỔNG CỘNG -->
-        <td colspan="6" style="text-align: center; font-weight: bold;">TỔNG CỘNG:</td>
-        <td id="sumThanhTien" style="text-align: right;">0</td>
-        <td id="sumTienMat" style="text-align: right;">0</td>
-        <td id="sumChuyenKhoan" style="text-align: right;">0</td>
-        <td id="sumDiemThuong" style="text-align: right;">0</td>
-    </tr>
-</tfoot>
+                    <tr>
+                        <td colspan="6" style="text-align: center; font-weight: bold;">TỔNG CỘNG:</td>
+                        <td id="sumThanhTien" style="text-align: right;">0</td>
+                        <td id="sumTienMat" style="text-align: right;">0</td>
+                        <td id="sumChuyenKhoan" style="text-align: right;">0</td>
+                        <td id="sumDiemThuong" style="text-align: right;">0</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
-</div>
 
 <!-- POPUP XEM CHI TIẾT SẢN PHẨM -->
 <div class="modal-overlay" id="productModal" onclick="closeModal(event)">
@@ -308,6 +342,44 @@ table.sales-table td:nth-last-child(-n+4) {
     const fallbackSVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'><rect width='100%' height='100%' fill='%23f8fafc'/><path d='M60 55 L90 55 L90 95 L60 95 Z' fill='none' stroke='%23cbd5e1' stroke-width='2'/><circle cx='68' cy='65' r='4' fill='%23cbd5e1'/><path d='M60 85 L72 73 L80 81 L85 76 L90 85 Z' fill='%23cbd5e1'/><text x='50%' y='80%' font-family='sans-serif' font-size='11' fill='%2394a3b8' text-anchor='middle'>Anh loi / Khong co anh</text></svg>";
 
     let cachedProducts = [];
+	
+// HÀM XỬ LÝ ĐĂNG NHẬP
+    function handleLogin(e) {
+        e.preventDefault();
+        const password = document.getElementById('loginPassword').value.trim();
+        const btnLogin = document.getElementById('btnLogin');
+        const loginMsg = document.getElementById('loginMsg');
+
+        btnLogin.disabled = true;
+        btnLogin.innerText = 'Đang kiểm tra...';
+        loginMsg.style.color = '#2980b9';
+        loginMsg.innerText = 'Đang xác thực mật khẩu...';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'verifyPassword', password: password })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.result === 'success') {
+                // Ẩn bảng đăng nhập, hiện giao diện chính
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+            } else {
+                loginMsg.style.color = '#c0392b';
+                loginMsg.innerText = '❌ ' + (res.message || 'Mật khẩu không chính xác!');
+            }
+        })
+        .catch(err => {
+            loginMsg.style.color = '#c0392b';
+            loginMsg.innerText = '❌ Lỗi kết nối đến máy chủ!';
+        })
+        .finally(() => {
+            btnLogin.disabled = false;
+            btnLogin.innerText = 'Xác Nhận';
+        });
+    }
 
 function switchTab(tabId, element) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -399,6 +471,7 @@ function switchTab(tabId, element) {
             maSP: inputMaSP,
             tenSP: document.getElementById('tenSP').value,
             giaSP: rawGiaSP,
+            soLuong: document.getElementById('soLuong').value, // <--- Bổ sung dòng này để gửi số lượng lên server
             diem: document.getElementById('diem').value,
             anh: inputAnh.value,
             thongTin: quill.root.innerHTML,
@@ -486,25 +559,27 @@ function switchTab(tabId, element) {
                 viewStatus.innerText = `Tìm thấy ${cachedProducts.length} sản phẩm:`;
 
                 cachedProducts.forEach((item, index) => {
-                    const formattedPrice = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
-                    const card = document.createElement('div');
-                    card.className = 'product-card';
-                    card.onclick = () => openModal(index);
+    const formattedPrice = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.onclick = () => openModal(index);
 
-                    card.innerHTML = `
-                        <div>
-                            <div class="card-img-wrapper">
-                                <img src="${item.anh}" alt="${item.tenSP}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
-                            </div>
-                            <div><span class="code">Mã: ${item.maSP}</span></div>
-                            <div class="title" title="${item.tenSP}">${item.tenSP}</div>
-                            <div class="price">${formattedPrice}</div>
-                            <div class="score">⭐ Điểm: ${item.diem}</div>
-                        </div>
-                        <button class="btn-view-detail">Xem Chi Tiết</button>
-                    `;
-                    productList.appendChild(card);
-                });
+    // Thêm hiển thị số lượng còn lại
+    card.innerHTML = `
+        <div>
+            <div class="card-img-wrapper">
+                <img src="${item.anh}" alt="${item.tenSP}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+            </div>
+            <div><span class="code">Mã: ${item.maSP}</span></div>
+            <div class="title" title="${item.tenSP}">${item.tenSP}</div>
+            <div class="price">${formattedPrice}</div>
+            <div class="score" style="color: #27ae60; font-weight: bold; font-size: 14px;">📦 Còn lại: ${item.soLuongConLai}</div>
+            <div class="score">⭐ Điểm: ${item.diem}</div>
+        </div>
+        <button class="btn-view-detail">Xem Chi Tiết</button>
+    `;
+    productList.appendChild(card);
+});
             } else {
                 viewStatus.style.color = '#c0392b';
                 viewStatus.innerText = 'Lỗi: ' + res.message;
@@ -605,24 +680,27 @@ function switchTab(tabId, element) {
     }
 
     function openModal(index) {
-        const item = cachedProducts[index];
-        if (!item) return;
+    const item = cachedProducts[index];
+    if (!item) return;
 
-        document.getElementById('modalCode').innerText = 'Mã SP: ' + item.maSP;
-        document.getElementById('modalTitle').innerText = item.tenSP;
-        document.getElementById('modalPrice').innerText = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
-        document.getElementById('modalScore').innerText = '⭐ ' + item.diem;
-        document.getElementById('modalDetails').innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
-        
-        const modalImg = document.getElementById('modalImg');
-        modalImg.src = item.anh;
-        modalImg.onerror = function() {
-            this.onerror = null;
-            this.src = fallbackSVG;
-        };
+    document.getElementById('modalCode').innerText = 'Mã SP: ' + item.maSP;
+    document.getElementById('modalTitle').innerText = item.tenSP;
+    document.getElementById('modalPrice').innerText = item.giaSP ? Number(item.giaSP).toLocaleString('vi-VN') + ' đ' : 'Chưa có giá';
+    
+    // Bổ sung hiển thị số lượng còn lại trong modal (Bạn có thể thêm thẻ span tương ứng trong khung HTML Modal nếu muốn)
+    document.getElementById('modalScore').innerHTML = `⭐ ${item.diem} &nbsp;|&nbsp; <span style="color:#27ae60; font-weight:bold;">📦 Số lượng còn lại: ${item.soLuongConLai}</span>`;
+    
+    document.getElementById('modalDetails').innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+    
+    const modalImg = document.getElementById('modalImg');
+    modalImg.src = item.anh;
+    modalImg.onerror = function() {
+        this.onerror = null;
+        this.src = fallbackSVG;
+    };
 
-        document.getElementById('productModal').style.display = 'flex';
-    }
+    document.getElementById('productModal').style.display = 'flex';
+}
 
     function closeModal(event) {
         if (event.target.classList.contains('modal-overlay')) {
@@ -789,12 +867,14 @@ function switchTab(tabId, element) {
 
         const filterDateVal = document.getElementById('filterDate').value; // Định dạng từ input date: YYYY-MM-DD
         const filterEmpCode = document.getElementById('filterEmpCode').value.trim().toUpperCase();
+        const filterProductCode = document.getElementById('filterProductCode').value.trim().toUpperCase(); // Lấy giá trị mã sản phẩm
         
         let filtered = cachedSalesData.filter(item => {
             let matchDate = true;
             let matchEmp = true;
+            let matchProduct = true;
 
-            // Chuyển YYYY-MM-DD từ ô input thành DD/MM/YYYY để so khớp với dữ liệu đã được chuẩn hóa
+            // Chuyển YYYY-MM-DD từ ô input thành DD/MM/YYYY để so khớp
             if (filterDateVal) {
                 const parts = filterDateVal.split('-'); // [YYYY, MM, DD]
                 const formattedInputDate = `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
@@ -806,12 +886,19 @@ function switchTab(tabId, element) {
 
             // Xử lý lọc theo mã nhân viên
             if (filterEmpCode) {
-                if (!item.maNV.includes(filterEmpCode)) {
+                if (!String(item.maNV || '').toUpperCase().includes(filterEmpCode)) {
                     matchEmp = false;
                 }
             }
 
-            return matchDate && matchEmp;
+            // Xử lý lọc theo mã sản phẩm
+            if (filterProductCode) {
+                if (!String(item.MaSP || '').toUpperCase().includes(filterProductCode)) {
+                    matchProduct = false;
+                }
+            }
+
+            return matchDate && matchEmp && matchProduct;
         });
 
         renderSalesTable(filtered);
@@ -911,6 +998,47 @@ function switchTab(tabId, element) {
                 }
             });
         });
+		
+// Kiểm tra sự kiện bấm nút đăng nhập hoặc ấn Enter
+document.getElementById('adminPassword').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        checkAdminPassword();
+    }
+});
+
+function checkAdminPassword() {
+    const password = document.getElementById('adminPassword').value.trim();
+    const loginMsg = document.getElementById('loginMsg');
+    
+    if (!password) {
+        loginMsg.style.color = '#c0392b';
+        loginMsg.innerText = 'Vui lòng nhập mật khẩu!';
+        return;
+    }
+
+    loginMsg.style.color = '#2980b9';
+    loginMsg.innerText = 'Đang xác thực...';
+
+    fetch(scriptURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'verifyPassword', password: password })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.result === 'success') {
+            // Đăng nhập thành công -> ẩn bảng đăng nhập đi
+            document.getElementById('loginOverlay').style.display = 'none';
+        } else {
+            loginMsg.style.color = '#c0392b';
+            loginMsg.innerText = res.message || 'Mật khẩu không chính xác!';
+        }
+    })
+    .catch(err => {
+        loginMsg.style.color = '#c0392b';
+        loginMsg.innerText = 'Lỗi kết nối đến server!';
+    });
+}
     </script>
 
 </body>
