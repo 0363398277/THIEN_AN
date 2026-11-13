@@ -47,6 +47,10 @@
             text-transform: uppercase;
         }
 
+        .page-header-banner .header-subtitle::before {
+            content: " - ";
+        }
+
         /* =========================
            NÚT MOBILE
         ========================= */
@@ -770,6 +774,37 @@
             margin: 4px 0;
         }
 
+        .modal-original-image-wrap {
+            margin: 16px auto 0;
+            padding: 10px;
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+            background: #f7f8fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            /* Nếu ảnh lớn hơn khung xem, cuộn ngay trong khu vực ảnh. */
+            overflow: auto;
+        }
+
+        .modal-original-image-wrap img {
+            display: block;
+            /* Hiển thị theo đúng kích thước pixel gốc của ảnh. */
+            width: auto;
+            height: auto;
+            max-width: none;
+            max-height: none;
+            object-fit: initial;
+            margin: 0 auto;
+            cursor: default;
+        }
+
+        .modal-original-image-caption {
+            margin-top: 7px;
+            color: #64748b;
+            font-size: 12px;
+        }
+
         .modal-details-content ul,
         .modal-details-content ol {
             margin: 4px 0;
@@ -834,13 +869,45 @@
             }
 
             .page-header-banner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
                 font-size: 22px;
+                line-height: 1.25;
                 padding: 12px 10px;
                 margin-bottom: 15px;
             }
 
+            .page-header-banner .header-subtitle::before {
+                content: "";
+            }
+
             .top-action-buttons-mobile {
                 display: flex;
+                width: 100%;
+                min-width: 0;
+                gap: 6px;
+            }
+
+            /* Ba nút chia đều chiều rộng, không để nút Trả Hàng tràn khung */
+            .top-action-buttons-mobile .top-btn {
+                flex: 1 1 0;
+                width: 0;
+                min-width: 0;
+                padding: 8px 3px;
+                gap: 4px;
+                font-size: 12px;
+                white-space: normal;
+                line-height: 1.2;
+                overflow-wrap: anywhere;
+            }
+
+            .top-action-buttons-mobile .cart-badge {
+                padding: 2px 5px;
+                font-size: 10px;
+                flex-shrink: 0;
             }
 
             .search-container .top-btn {
@@ -1271,7 +1338,7 @@
 <body>
 
 <div class="main-container">
-    <div class="page-header-banner">THIÊN AN - THỜI TRANG NAM NỮ</div>
+    <div class="page-header-banner"><span>THIÊN AN</span><span class="header-subtitle">THỜI TRANG NAM NỮ</span></div>
 
     <!-- 2 NÚT LIÊN HỆ & GIỎ HÀNG (Hiển thị ngay dưới tiêu đề trên điện thoại) -->
     <div class="top-action-buttons-mobile">
@@ -1619,7 +1686,14 @@
         .then(res => res.json())
         .then(res => {
             if (res.result === 'success') {
-                cachedProducts = res.data;
+                // Sắp xếp mã sản phẩm tăng dần; numeric giúp mã có số được xếp đúng thứ tự.
+                cachedProducts = (Array.isArray(res.data) ? res.data : []).sort((a, b) =>
+                    String(a.maSP || '').localeCompare(
+                        String(b.maSP || ''),
+                        'vi',
+                        { numeric: true, sensitivity: 'base' }
+                    )
+                );
 
                 if (cachedProducts.length === 0) {
                     viewStatus.style.color = '#c0392b';
@@ -1994,7 +2068,31 @@ stockEl.innerText = stockVal > 0 ? stockVal : 'Hết hàng (0)';
 stockEl.style.color = stockVal > 0 ? '#27ae60' : '#e74c3c';
 
 document.getElementById('modalScore').innerText = '⭐ Điểm: ' + (item.diem || 0);
-document.getElementById('modalDetails').innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+const modalDetails = document.getElementById('modalDetails');
+modalDetails.innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+
+// Hiển thị thêm ảnh gốc trong phần thông tin chi tiết, giữ nguyên tỷ lệ ảnh.
+if (item.anh) {
+    const originalWrap = document.createElement('div');
+    originalWrap.className = 'modal-original-image-wrap';
+
+    const originalImg = document.createElement('img');
+    originalImg.src = item.anh;
+    originalImg.alt = 'Ảnh gốc sản phẩm ' + (item.tenSP || '');
+    originalImg.loading = 'lazy';
+    originalImg.onerror = function() {
+        originalWrap.style.display = 'none';
+    };
+    const originalCaption = document.createElement('div');
+    originalCaption.className = 'modal-original-image-caption';
+    originalCaption.textContent = 'Ảnh gốc sản phẩm';
+
+    // Ảnh được hiển thị trực tiếp theo kích thước gốc, không cần nhấn để mở tab mới.
+    originalWrap.appendChild(originalImg);
+    originalWrap.appendChild(originalCaption);
+    // Đặt ảnh gốc ở cuối cùng khung mô tả và căn giữa.
+    modalDetails.appendChild(originalWrap);
+}
 
 const modalImg = document.getElementById('modalImg');
 modalImg.src = item.anh;
