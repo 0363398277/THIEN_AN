@@ -88,8 +88,17 @@
         .product-card .price { color: #e74c3c; font-weight: bold; font-size: 16px; margin: 2px 0; }
         .product-card .score { color: #f39c12; font-size: 13px; margin-top: 2px; }
         
-        .btn-view-detail { margin-top: 10px; padding: 8px; background-color: #f8f9fa; border: 1px solid #dcdde1; border-radius: 5px; font-size: 13px; font-weight: 600; color: #2c3e50; transition: 0.2s; }
-        .product-card:hover .btn-view-detail { background-color: #27ae60; color: #fff; border-color: #27ae60; }
+        .product-card-actions { display:flex; gap:8px; margin-top:10px; }
+        .product-card-actions button { flex:1; min-width:0; padding:8px 6px; cursor:pointer; border:1px solid #dcdde1; border-radius:5px; background:#f8f9fa; color:#2c3e50; font-size:13px; font-weight:600; line-height:1.25; transition:background-color .2s, color .2s, border-color .2s; }
+        .product-card-actions button:hover { background:#27ae60; color:#fff; border-color:#27ae60; }
+        .form-action-buttons { display:flex; gap:10px; margin-top:20px; align-items:stretch; }
+        .form-action-buttons button { flex:1; min-width:0; width:auto; margin-top:0 !important; }
+        .btn-delete-product { background:#c0392b !important; }
+        .btn-delete-product:hover { background:#a93226 !important; }
+        .modal-full-image-wrap { display:flex; justify-content:center; align-items:center; width:100%; margin:22px auto 4px; padding:12px; background:#fafafa; border:1px solid #eee; border-radius:8px; overflow:visible; }
+        /* Hiển thị ảnh theo đúng tỷ lệ gốc, không ép chiều cao hoặc cắt ảnh */
+        .modal-full-image { display:block; width:auto; height:auto; max-width:100%; max-height:none; object-fit:initial; margin:0 auto; }
+        @media (max-width:520px) { .form-action-buttons { flex-direction:column; } }
 
         .btn-submit-emp { width: 100%; padding: 14px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 17px; margin-top: 20px; }
         .btn-submit-emp:hover { background-color: #218838; }
@@ -101,7 +110,7 @@
 
         /* POPUP MODAL PHÓNG TO ẢNH */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; z-index: 9999; padding: 15px; }
-        .modal-card { background: #fff; border-radius: 12px; max-width: 750px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 8px 30px rgba(0,0,0,0.25); animation: fadeIn 0.25s ease-out; }
+        .modal-card { background: #fff; border-radius: 12px; max-width: 1100px; width: 100%; max-height: 92vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 8px 30px rgba(0,0,0,0.25); animation: fadeIn 0.25s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .modal-close { position: absolute; top: 12px; right: 15px; font-size: 28px; font-weight: bold; color: #7f8c8d; cursor: pointer; border: none; background: none; }
         .modal-close:hover { color: #e74c3c; }
@@ -205,7 +214,11 @@ table.sales-table td:nth-last-child(-n+4) {
                 <label>Thông tin chi tiết</label>
                 <div id="editor-container"></div>
             </div>
-            <button type="submit" id="btnSave" class="btn-submit">Lưu Sản Phẩm</button>
+            <div class="form-action-buttons">
+                <button type="submit" id="btnSave" class="btn-submit">Lưu Sản Phẩm</button>
+                <button type="button" id="btnCancelEdit" class="btn-submit" style="display:none; background:#7f8c8d;" onclick="cancelEditProduct()">Hủy sửa</button>
+                <button type="button" id="btnDeleteProduct" class="btn-submit btn-delete-product" style="display:none;" onclick="deleteEditingProduct()">Xóa sản phẩm</button>
+            </div>
         </form>
         <div id="msg"></div>
     </div>
@@ -331,6 +344,9 @@ table.sales-table td:nth-last-child(-n+4) {
         </div>
         <div class="modal-body-title">Mô Tả Chi Tiết</div>
         <div class="modal-details-content" id="modalDetails"></div>
+        <div class="modal-full-image-wrap">
+            <img id="modalFullImg" class="modal-full-image" src="" alt="Ảnh sản phẩm kích thước đầy đủ">
+        </div>
     </div>
 </div>
 
@@ -342,6 +358,8 @@ table.sales-table td:nth-last-child(-n+4) {
     const fallbackSVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'><rect width='100%' height='100%' fill='%23f8fafc'/><path d='M60 55 L90 55 L90 95 L60 95 Z' fill='none' stroke='%23cbd5e1' stroke-width='2'/><circle cx='68' cy='65' r='4' fill='%23cbd5e1'/><path d='M60 85 L72 73 L80 81 L85 76 L90 85 Z' fill='%23cbd5e1'/><text x='50%' y='80%' font-family='sans-serif' font-size='11' fill='%2394a3b8' text-anchor='middle'>Anh loi / Khong co anh</text></svg>";
 
     let cachedProducts = [];
+    let editingProduct = false;
+    let editingProductCode = '';
 	
 // HÀM XỬ LÝ ĐĂNG NHẬP
     function handleLogin(e) {
@@ -475,7 +493,7 @@ function switchTab(tabId, element) {
             diem: document.getElementById('diem').value,
             anh: inputAnh.value,
             thongTin: quill.root.innerHTML,
-            allowOverwrite: allowOverwrite,
+            allowOverwrite: allowOverwrite || editingProduct,
             allowDuplicateName: allowDuplicateName
         };
 
@@ -508,6 +526,11 @@ function switchTab(tabId, element) {
                 msg.innerText = '✅ ' + res.message;
                 document.getElementById('productForm').reset();
                 quill.setContents([]);
+                editingProduct = false;
+                editingProductCode = '';
+                btnSave.innerText = 'Lưu Sản Phẩm';
+                document.getElementById('btnCancelEdit').style.display = 'none';
+                document.getElementById('btnDeleteProduct').style.display = 'none';
                 updateImagePreview();
             } else {
                 msg.style.backgroundColor = '#f8d7da';
@@ -522,7 +545,7 @@ function switchTab(tabId, element) {
         })
         .finally(() => {
             btnSave.disabled = false;
-            btnSave.innerText = 'Lưu Sản Phẩm';
+            btnSave.innerText = editingProduct ? 'Cập Nhật Sản Phẩm' : 'Lưu Sản Phẩm';
         });
     }
 
@@ -576,7 +599,10 @@ function switchTab(tabId, element) {
             <div class="score" style="color: #27ae60; font-weight: bold; font-size: 14px;">📦 Còn lại: ${item.soLuongConLai}</div>
             <div class="score">⭐ Điểm: ${item.diem}</div>
         </div>
-        <button class="btn-view-detail">Xem Chi Tiết</button>
+        <div class="product-card-actions">
+            <button type="button" onclick="event.stopPropagation(); openModal(${index})">Xem Chi Tiết</button>
+            <button type="button" onclick="event.stopPropagation(); editProduct(${index})">Sửa</button>
+        </div>
     `;
     productList.appendChild(card);
 });
@@ -679,6 +705,93 @@ function switchTab(tabId, element) {
         });
     }
 
+
+    // Đưa thông tin sản phẩm đang chọn vào đúng các trường của tab Thêm Sản Phẩm.
+    function editProduct(index) {
+        const item = cachedProducts[index];
+        if (!item) return;
+
+        editingProduct = true;
+        editingProductCode = String(item.maSP || '');
+        document.getElementById('maSP').value = item.maSP || '';
+        document.getElementById('tenSP').value = item.tenSP || '';
+
+        const price = String(item.giaSP ?? '').replace(/[^\d]/g, '');
+        inputGiaSP.value = price ? Number(price).toLocaleString('vi-VN') : '';
+
+        // API trả về số lượng còn lại; dùng giá trị này để điền vào trường số lượng.
+        document.getElementById('soLuong').value =
+            item.soLuong ?? item.soLuongConLai ?? '';
+
+        document.getElementById('diem').value = item.diem ?? '';
+        inputAnh.value = item.anh || '';
+        updateImagePreview();
+        quill.root.innerHTML = item.thongTin || '';
+
+        document.getElementById('btnSave').innerText = 'Cập Nhật Sản Phẩm';
+        document.getElementById('btnCancelEdit').style.display = 'block';
+        document.getElementById('btnDeleteProduct').style.display = 'block';
+        document.getElementById('msg').innerText = '';
+        document.getElementById('msg').style.backgroundColor = 'transparent';
+
+        closeModalDirect();
+        const addTabButton = document.querySelector('.tab-btn[onclick*="tabAddProduct"]');
+        switchTab('tabAddProduct', addTabButton);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Hủy chế độ sửa và trả form về trạng thái thêm sản phẩm mới.
+    function cancelEditProduct() {
+        editingProduct = false;
+        editingProductCode = '';
+        document.getElementById('productForm').reset();
+        quill.setContents([]);
+        updateImagePreview();
+        document.getElementById('btnSave').innerText = 'Lưu Sản Phẩm';
+        document.getElementById('btnCancelEdit').style.display = 'none';
+        document.getElementById('btnDeleteProduct').style.display = 'none';
+        document.getElementById('msg').innerText = '';
+        document.getElementById('msg').style.backgroundColor = 'transparent';
+    }
+
+    // Gửi yêu cầu xóa sản phẩm theo mã. Google Apps Script cần hỗ trợ action: "delete".
+    async function deleteEditingProduct() {
+        if (!editingProduct || !editingProductCode) return;
+        const codeToDelete = editingProductCode;
+        if (!confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${codeToDelete}" không? Thao tác này không thể hoàn tác.`)) return;
+
+        const deleteButton = document.getElementById('btnDeleteProduct');
+        const msg = document.getElementById('msg');
+        deleteButton.disabled = true;
+        deleteButton.innerText = 'Đang xóa...';
+        msg.style.backgroundColor = '#e3f2fd';
+        msg.style.color = '#0d47a1';
+        msg.innerText = 'Đang gửi yêu cầu xóa sản phẩm...';
+
+        try {
+            const response = await fetch(scriptURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'delete', maSP: codeToDelete })
+            });
+            const result = await response.json();
+            if (result.result !== 'success') throw new Error(result.message || 'Máy chủ chưa xác nhận xóa sản phẩm.');
+
+            cancelEditProduct();
+            msg.style.backgroundColor = '#d4edda';
+            msg.style.color = '#155724';
+            msg.innerText = '✅ ' + (result.message || 'Đã xóa sản phẩm.');
+            loadProducts();
+        } catch (error) {
+            msg.style.backgroundColor = '#f8d7da';
+            msg.style.color = '#721c24';
+            msg.innerText = '❌ Không thể xóa: ' + error.message;
+        } finally {
+            deleteButton.disabled = false;
+            deleteButton.innerText = 'Xóa sản phẩm';
+        }
+    }
+
     function openModal(index) {
     const item = cachedProducts[index];
     if (!item) return;
@@ -695,6 +808,13 @@ function switchTab(tabId, element) {
     const modalImg = document.getElementById('modalImg');
     modalImg.src = item.anh;
     modalImg.onerror = function() {
+        this.onerror = null;
+        this.src = fallbackSVG;
+    };
+
+    const modalFullImg = document.getElementById('modalFullImg');
+    modalFullImg.src = item.anh || fallbackSVG;
+    modalFullImg.onerror = function() {
         this.onerror = null;
         this.src = fallbackSVG;
     };
