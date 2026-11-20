@@ -774,36 +774,9 @@
             margin: 4px 0;
         }
 
-        .modal-original-image-wrap {
-            margin: 16px auto 0;
-            padding: 10px;
-            width: 100%;
-            max-width: 100%;
-            text-align: center;
-            background: #f7f8fa;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            /* Nếu ảnh lớn hơn khung xem, cuộn ngay trong khu vực ảnh. */
-            overflow: auto;
-        }
-
-        .modal-original-image-wrap img {
-            display: block;
-            /* Hiển thị theo đúng kích thước pixel gốc của ảnh. */
-            width: auto;
-            height: auto;
-            max-width: none;
-            max-height: none;
-            object-fit: initial;
-            margin: 0 auto;
-            cursor: default;
-        }
-
-        .modal-original-image-caption {
-            margin-top: 7px;
-            color: #64748b;
-            font-size: 12px;
-        }
+        /* Ảnh sản phẩm tạo từ link trong phần mô tả chi tiết */
+        .modal-details-content .detail-img { display: block; margin: 10px auto; text-align: center; }
+        .modal-details-content .detail-img img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 6px; }
 
         .modal-details-content ul,
         .modal-details-content ol {
@@ -2053,6 +2026,66 @@ const isTransfer = (paymentVal === 'transfer');
         });
     }
 
+
+    // Chuyển các link ảnh trong phần mô tả chi tiết thành hình ảnh (không có link thì không hiển thị ảnh).
+    function renderProductDetails(container, html) {
+        container.innerHTML = html || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+
+        // Đổi link chia sẻ Google Drive sang link ảnh trực tiếp
+        function normalizeImageUrl(url) {
+            const m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || url.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]+)/);
+            return m ? 'https://lh3.googleusercontent.com/d/' + m[1] : url;
+        }
+
+        function makeImage(url, label) {
+            const wrap = document.createElement('span');
+            wrap.className = 'detail-img';
+            const img = document.createElement('img');
+            img.src = normalizeImageUrl(url);
+            img.alt = 'Hình ảnh sản phẩm';
+            img.loading = 'lazy';
+            // Nếu link không phải ảnh / bị lỗi thì trả lại thành link bấm được
+            img.onerror = function() {
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.textContent = label || url;
+                wrap.replaceWith(a);
+            };
+            wrap.appendChild(img);
+            return wrap;
+        }
+
+        // 1) Thẻ <a> có href http(s)
+        container.querySelectorAll('a[href]').forEach(a => {
+            const href = (a.getAttribute('href') || '').trim();
+            if (/^https?:\/\//i.test(href)) a.replaceWith(makeImage(href, a.textContent));
+        });
+
+        // 2) Link dạng chữ thường
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+        textNodes.forEach(node => {
+            const text = node.nodeValue;
+            if (!/https?:\/\//i.test(text)) return;
+            const frag = document.createDocumentFragment();
+            const re = /https?:\/\/[^\s<>"']+/gi;
+            let last = 0, m;
+            while ((m = re.exec(text)) !== null) {
+                const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+                if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                frag.appendChild(makeImage(url));
+                last = m.index + url.length;
+                re.lastIndex = last;
+            }
+            if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+            node.replaceWith(frag);
+        });
+    }
+
     function openModal(index) {
         const item = cachedProducts[index];
         if (!item) return;
@@ -2068,31 +2101,7 @@ stockEl.innerText = stockVal > 0 ? stockVal : 'Hết hàng (0)';
 stockEl.style.color = stockVal > 0 ? '#27ae60' : '#e74c3c';
 
 document.getElementById('modalScore').innerText = '⭐ Điểm: ' + (item.diem || 0);
-const modalDetails = document.getElementById('modalDetails');
-modalDetails.innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
-
-// Hiển thị thêm ảnh gốc trong phần thông tin chi tiết, giữ nguyên tỷ lệ ảnh.
-if (item.anh) {
-    const originalWrap = document.createElement('div');
-    originalWrap.className = 'modal-original-image-wrap';
-
-    const originalImg = document.createElement('img');
-    originalImg.src = item.anh;
-    originalImg.alt = 'Ảnh gốc sản phẩm ' + (item.tenSP || '');
-    originalImg.loading = 'lazy';
-    originalImg.onerror = function() {
-        originalWrap.style.display = 'none';
-    };
-    const originalCaption = document.createElement('div');
-    originalCaption.className = 'modal-original-image-caption';
-    originalCaption.textContent = 'Ảnh gốc sản phẩm';
-
-    // Ảnh được hiển thị trực tiếp theo kích thước gốc, không cần nhấn để mở tab mới.
-    originalWrap.appendChild(originalImg);
-    originalWrap.appendChild(originalCaption);
-    // Đặt ảnh gốc ở cuối cùng khung mô tả và căn giữa.
-    modalDetails.appendChild(originalWrap);
-}
+renderProductDetails(document.getElementById('modalDetails'), item.thongTin);
 
 const modalImg = document.getElementById('modalImg');
 modalImg.src = item.anh;
