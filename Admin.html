@@ -95,9 +95,9 @@
         .form-action-buttons button { flex:1; min-width:0; width:auto; margin-top:0 !important; }
         .btn-delete-product { background:#c0392b !important; }
         .btn-delete-product:hover { background:#a93226 !important; }
-        .modal-full-image-wrap { display:flex; justify-content:center; align-items:center; width:100%; margin:22px auto 4px; padding:12px; background:#fafafa; border:1px solid #eee; border-radius:8px; overflow:visible; }
-        /* Hiển thị ảnh theo đúng tỷ lệ gốc, không ép chiều cao hoặc cắt ảnh */
-        .modal-full-image { display:block; width:auto; height:auto; max-width:100%; max-height:none; object-fit:initial; margin:0 auto; }
+        /* Ảnh sản phẩm tạo từ link trong phần mô tả chi tiết */
+        .modal-details-content .detail-img { display: block; margin: 10px auto; text-align: center; }
+        .modal-details-content .detail-img img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 6px; }
         @media (max-width:520px) { .form-action-buttons { flex-direction:column; } }
 
         .btn-submit-emp { width: 100%; padding: 14px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 17px; margin-top: 20px; }
@@ -344,9 +344,6 @@ table.sales-table td:nth-last-child(-n+4) {
         </div>
         <div class="modal-body-title">Mô Tả Chi Tiết</div>
         <div class="modal-details-content" id="modalDetails"></div>
-        <div class="modal-full-image-wrap">
-            <img id="modalFullImg" class="modal-full-image" src="" alt="Ảnh sản phẩm kích thước đầy đủ">
-        </div>
     </div>
 </div>
 
@@ -792,6 +789,66 @@ function switchTab(tabId, element) {
         }
     }
 
+
+    // Chuyển các link ảnh trong phần mô tả chi tiết thành hình ảnh (không có link thì không hiển thị ảnh).
+    function renderProductDetails(container, html) {
+        container.innerHTML = html || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+
+        // Đổi link chia sẻ Google Drive sang link ảnh trực tiếp
+        function normalizeImageUrl(url) {
+            const m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || url.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]+)/);
+            return m ? 'https://lh3.googleusercontent.com/d/' + m[1] : url;
+        }
+
+        function makeImage(url, label) {
+            const wrap = document.createElement('span');
+            wrap.className = 'detail-img';
+            const img = document.createElement('img');
+            img.src = normalizeImageUrl(url);
+            img.alt = 'Hình ảnh sản phẩm';
+            img.loading = 'lazy';
+            // Nếu link không phải ảnh / bị lỗi thì trả lại thành link bấm được
+            img.onerror = function() {
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.textContent = label || url;
+                wrap.replaceWith(a);
+            };
+            wrap.appendChild(img);
+            return wrap;
+        }
+
+        // 1) Thẻ <a> có href http(s)
+        container.querySelectorAll('a[href]').forEach(a => {
+            const href = (a.getAttribute('href') || '').trim();
+            if (/^https?:\/\//i.test(href)) a.replaceWith(makeImage(href, a.textContent));
+        });
+
+        // 2) Link dạng chữ thường
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+        textNodes.forEach(node => {
+            const text = node.nodeValue;
+            if (!/https?:\/\//i.test(text)) return;
+            const frag = document.createDocumentFragment();
+            const re = /https?:\/\/[^\s<>"']+/gi;
+            let last = 0, m;
+            while ((m = re.exec(text)) !== null) {
+                const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+                if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                frag.appendChild(makeImage(url));
+                last = m.index + url.length;
+                re.lastIndex = last;
+            }
+            if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+            node.replaceWith(frag);
+        });
+    }
+
     function openModal(index) {
     const item = cachedProducts[index];
     if (!item) return;
@@ -803,7 +860,7 @@ function switchTab(tabId, element) {
     // Bổ sung hiển thị số lượng còn lại trong modal (Bạn có thể thêm thẻ span tương ứng trong khung HTML Modal nếu muốn)
     document.getElementById('modalScore').innerHTML = `⭐ ${item.diem} &nbsp;|&nbsp; <span style="color:#27ae60; font-weight:bold;">📦 Số lượng còn lại: ${item.soLuongConLai}</span>`;
     
-    document.getElementById('modalDetails').innerHTML = item.thongTin || '<i>Chưa có thông tin mô tả chi tiết.</i>';
+    renderProductDetails(document.getElementById('modalDetails'), item.thongTin);
     
     const modalImg = document.getElementById('modalImg');
     modalImg.src = item.anh;
@@ -812,12 +869,6 @@ function switchTab(tabId, element) {
         this.src = fallbackSVG;
     };
 
-    const modalFullImg = document.getElementById('modalFullImg');
-    modalFullImg.src = item.anh || fallbackSVG;
-    modalFullImg.onerror = function() {
-        this.onerror = null;
-        this.src = fallbackSVG;
-    };
 
     document.getElementById('productModal').style.display = 'flex';
 }
